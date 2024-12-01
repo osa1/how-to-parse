@@ -1,0 +1,35 @@
+[package]
+name = "parsing_post"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+oorandom = "11.1.4" # for benchmark input generation
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bin]]
+name = "test_gen"
+path = "bin/test_gen.rs"
+
+[[bin]]
+name = "parse_recursive"
+path = "bin/parse_recursive.rs"
+
+[[bin]]
+name = "parse_non_recursive"
+path = "bin/parse_non_recursive.rs"
+
+[[bin]]
+name = "parse_iter"
+path = "bin/parse_iter.rs"
+
+[[bin]]
+name = "parse_push"
+path = "bin/parse_push.rs"
+
+[[bench]]
+name = "bench"
+path = "bin/bench.rs"
+harness = false
