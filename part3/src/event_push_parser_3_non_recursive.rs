@@ -74,7 +74,7 @@ fn parse_single<L: EventListener, I: Iterator<Item = Item>>(
             continue;
         }
 
-        match dbg!(state) {
+        match state {
             ParserState::TopLevel => match token {
                 Token::LBrace => {
                     container_stack.push(Container::Object);

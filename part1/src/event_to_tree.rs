@@ -6,8 +6,6 @@ pub fn event_to_tree<I: Iterator<Item = Result<ParseEvent, ParseError>>>(
     input: &str,
 ) -> Result<Json, ParseError> {
     let mut container_stack: Vec<Container> = vec![];
-    let mut current_container: Option<Container> = None;
-    let mut parsed_object: Option<Json> = None;
 
     for event in parser.by_ref() {
         let ParseEvent { kind, byte_offset } = match event {
@@ -17,89 +15,60 @@ pub fn event_to_tree<I: Iterator<Item = Result<ParseEvent, ParseError>>>(
 
         match kind {
             ParseEventKind::StartObject => {
-                if let Some(container) = current_container.take() {
-                    container_stack.push(container);
-                }
-                current_container = Some(Container::new_map());
+                container_stack.push(Container::new_map());
             }
 
             ParseEventKind::EndObject => {
-                let map = current_container.take().unwrap().into_map().finish();
-                match container_stack.pop() {
-                    Some(mut container) => {
-                        container.add_object(map);
-                        current_container = Some(container)
-                    }
-                    None => {
-                        parsed_object = Some(map);
-                        break;
-                    }
+                let object = container_stack.pop().unwrap().into_map().finish();
+                match container_stack.last_mut() {
+                    Some(container) => container.add_object(object),
+                    None => return Ok(object),
                 }
             }
 
             ParseEventKind::StartArray => {
-                if let Some(container) = current_container.take() {
-                    container_stack.push(container);
-                }
-                current_container = Some(Container::new_array());
+                container_stack.push(Container::new_array());
             }
 
             ParseEventKind::EndArray => {
-                let array = current_container.take().unwrap().into_array();
-                match container_stack.pop() {
-                    Some(mut container) => {
-                        container.add_object(Json::Array(array));
-                        current_container = Some(container)
-                    }
-                    None => {
-                        parsed_object = Some(Json::Array(array));
-                        break;
-                    }
+                let array = container_stack.pop().unwrap().into_array();
+                let object = Json::Array(array);
+                match container_stack.last_mut() {
+                    Some(container) => container.add_object(object),
+                    None => return Ok(object),
                 }
             }
 
             ParseEventKind::Int(int) => {
                 let object = Json::Int(int);
-                match current_container.as_mut() {
+                match container_stack.last_mut() {
                     Some(container) => container.add_object(object),
-                    None => {
-                        parsed_object = Some(object);
-                        break;
-                    }
+                    None => return Ok(object),
                 }
             }
 
             ParseEventKind::Str { size_in_bytes } => {
                 let string = input[byte_offset..byte_offset + size_in_bytes].to_string();
                 let object = Json::String(string);
-                match current_container.as_mut() {
+                match container_stack.last_mut() {
                     Some(container) => container.add_object(object),
-                    None => {
-                        parsed_object = Some(object);
-                        break;
-                    }
+                    None => return Ok(object),
                 }
             }
 
             ParseEventKind::Bool(bool) => {
                 let object = Json::Bool(bool);
-                match current_container.as_mut() {
+                match container_stack.last_mut() {
                     Some(container) => container.add_object(object),
-                    None => {
-                        parsed_object = Some(object);
-                        break;
-                    }
+                    None => return Ok(object),
                 }
             }
 
             ParseEventKind::Null => {
                 let object = Json::Null;
-                match current_container.as_mut() {
+                match container_stack.last_mut() {
                     Some(container) => container.add_object(object),
-                    None => {
-                        parsed_object = Some(object);
-                        break;
-                    }
+                    None => return Ok(object),
                 }
             }
 
@@ -107,7 +76,10 @@ pub fn event_to_tree<I: Iterator<Item = Result<ParseEvent, ParseError>>>(
         }
     }
 
-    Ok(parsed_object.unwrap())
+    Err(ParseError {
+        byte_offset: input.len(),
+        reason: "unexpected end of input",
+    })
 }
 
 pub(crate) enum Container {
