@@ -7,7 +7,7 @@ pub fn event_to_tree<I: Iterator<Item = Result<ParseEvent, ParseError>>>(
 ) -> Result<Json, ParseError> {
     let mut container_stack: Vec<Container> = vec![];
 
-    for event in parser.by_ref() {
+    for event in parser {
         let ParseEvent { kind, byte_offset } = match event {
             Ok(event) => event,
             Err(err) => return Err(err),
